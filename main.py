@@ -100,3 +100,51 @@ def get_by_status(status: str, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail=f"Invalid status. Choose from: {valid_statuses}")
     results = db.query(models.Anime).filter(models.Anime.status == status).all()
     return results
+
+import requests
+
+# Search anime from Jikan API
+@app.get("/search/{title}")
+def search_anime(title: str):
+    response = requests.get(f"https://api.jikan.moe/v4/anime?q={title}&limit=5")
+    if response.status_code != 200:
+        raise HTTPException(status_code=500, detail="Failed to fetch from Jikan API")
+    data = response.json()
+    results = []
+    for anime in data["data"]:
+        results.append({
+            "mal_id": anime["mal_id"],
+            "title": anime["title"],
+            "genre": ", ".join([g["name"] for g in anime["genres"]]),
+            "total_episodes": anime["episodes"],
+            "rating": anime["score"],
+            "status": anime["status"],
+            "synopsis": anime["synopsis"]
+        })
+    return results
+
+# Add anime directly from Jikan search by MAL ID
+@app.post("/anime/add_from_search/{mal_id}")
+def add_from_search(mal_id: int, status: str, db: Session = Depends(get_db)):
+    valid_statuses = ["watched", "watching", "want_to_watch"]
+    if status not in valid_statuses:
+        raise HTTPException(status_code=400, detail=f"Invalid status. Choose from: {valid_statuses}")
+    
+    response = requests.get(f"https://api.jikan.moe/v4/anime/{mal_id}")
+    if response.status_code != 200:
+        raise HTTPException(status_code=500, detail="Failed to fetch from Jikan API")
+    
+    anime_data = response.json()["data"]
+    
+    db_anime = models.Anime(
+        title=anime_data["title"],
+        genre=", ".join([g["name"] for g in anime_data["genres"]]),
+        total_episodes=anime_data["episodes"],
+        status=status,
+        episodes_watched=0
+    )
+    
+    db.add(db_anime)
+    db.commit()
+    db.refresh(db_anime)
+    return db_anime
