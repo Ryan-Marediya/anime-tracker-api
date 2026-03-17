@@ -19,7 +19,7 @@ A REST API built with Python and FastAPI to track anime you've watched, are curr
 ## Getting Started
 
 1. Clone the repo
-   git clone https://github.com/YOURUSERNAME/anime-tracker-api.git
+   git clone https://github.com/Ryan-Marediya/anime-tracker-api.git
 
 2. Create and activate virtual environment
    python3 -m venv venv
